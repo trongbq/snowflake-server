@@ -40,7 +40,7 @@ func (s *Server) Start() {
     mux := http.NewServeMux()
     mux.Handle("/ping", http.HandlerFunc(ping))
     mux.Handle("/nextid", authMiddleware(http.HandlerFunc(s.nextID)))
-    mux.Handle("/stats", authMiddleware(http.HandlerFunc(stats)))
+    mux.Handle("/stats", authMiddleware(http.HandlerFunc(s.stats)))
 
     log.Println("Listening on :8000...")
     err := http.ListenAndServe(":8000", mux)
@@ -66,13 +66,19 @@ func (s *Server) nextID(w http.ResponseWriter, r *http.Request) {
     w.Write(data)
 }
 
-func ping(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("Pong"))
+func (s *Server) stats(w http.ResponseWriter, r *http.Request) {
+    data, err := s.idWorker.Stats()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.Write(data)
 }
 
-
-func stats(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("Not Implemented"))
+func ping(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Pong"))
 }
 
 func authMiddleware(next http.Handler) http.Handler {

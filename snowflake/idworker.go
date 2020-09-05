@@ -4,6 +4,7 @@ import (
     "time"
     "errors"
     "sync"
+    "encoding/json"
 )
 
 const (
@@ -63,6 +64,20 @@ func (w *IDWorker) NextID() int64 {
     w.lastTime = now
 
     return (now << TimestampShift) | (int64(w.machineID) << MachineIDShift) | int64(w.sequence)
+}
+
+func (w IDWorker) Stats() ([]byte, error) {
+    stats := struct {
+        MachineID int
+        LastTime int64
+        Sequence int
+    } {
+        MachineID: w.machineID,
+        LastTime: w.lastTime,
+        Sequence: w.sequence,
+    }
+
+    return json.Marshal(stats)
 }
 
 func tilNextMillis(lt int64) int64 {
