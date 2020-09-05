@@ -3,8 +3,23 @@ package main
 import (
   "net/http"
   "log"
+  "strings"
+  "encoding/json"
+  "snowflake-server/snowflake"
 )
 
+
+const AuthorizationHeaderPrefix = "Bearer"
+
+var idWorker *snowflake.IDWorker
+
+func init() {
+    var err error
+    idWorker, err = snowflake.NewIDWorker(1)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
 
 func main() {
     mux := http.NewServeMux()
@@ -24,7 +39,19 @@ func ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func nextID(w http.ResponseWriter, r *http.Request) {
-    w.Write([]byte("Not Implemented"))
+    id := idWorker.NextID()
+
+    idResp := struct {
+        ID int64 `json:"id"`
+    } { id }
+
+    data, err := json.Marshal(idResp)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    w.Write(data)
 }
 
 func stats(w http.ResponseWriter, r *http.Request) {
@@ -33,6 +60,9 @@ func stats(w http.ResponseWriter, r *http.Request) {
 
 func authMiddleware(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        auth := r.Header.Get("Authorization")
+        if !strings.HasPrefix(auth, AuthorizationHeaderPrefix) {
+        }
         next.ServeHTTP(w, r)
     })
 }
