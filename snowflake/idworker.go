@@ -25,7 +25,13 @@ const (
 
 var ErrInvalidMachineID = errors.New("invalid machine ID")
 
-var TwEpochTime = time.Unix(TwEpoch/1000, (TwEpoch%1000)*1000000)
+var TwEpochTime time.Time
+
+func init() {
+	// https://go.googlesource.com/proposal/+/master/design/12914-monotonic.md
+	n := time.Now()
+	TwEpochTime = n.Add(time.Unix(TwEpoch/1000, (TwEpoch%1000)*1000000).Sub(n))
+}
 
 type IDWorker struct {
 	machineID int
