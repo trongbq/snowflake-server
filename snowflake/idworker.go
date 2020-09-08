@@ -37,7 +37,7 @@ type IDWorker struct {
 	machineID int
 	lastTime  int64
 	sequence  int
-	mu        sync.Mutex
+	mu        *sync.Mutex
 }
 
 func NewIDWorker(mID int) (*IDWorker, error) {
@@ -48,6 +48,7 @@ func NewIDWorker(mID int) (*IDWorker, error) {
 	w := IDWorker{
 		machineID: mID,
 		lastTime:  -1,
+		mu:        &sync.Mutex{},
 	}
 
 	return &w, nil
@@ -58,18 +59,7 @@ func (w *IDWorker) NextID() int64 {
 	defer w.mu.Unlock()
 
 	now := time.Since(TwEpochTime).Milliseconds()
-	if now == w.lastTime {
-		w.sequence = (w.sequence + 1) & SequenceMask
-		if w.sequence == 0 {
-			now = tilNextMillis(w.lastTime)
-		}
-	} else {
-		w.sequence = 0
-	}
-
-	w.lastTime = now
-
-	return (now << TimestampShift) | (int64(w.machineID) << MachineIDShift) | int64(w.sequence)
+	return nextID(w, now)
 }
 
 func (w IDWorker) Stats() ([]byte, error) {
@@ -84,6 +74,22 @@ func (w IDWorker) Stats() ([]byte, error) {
 	}
 
 	return json.Marshal(stats)
+}
+
+// Create a private function to handle real work to make it easier for testing
+func nextID(w *IDWorker, now int64) int64 {
+	if now == w.lastTime {
+		w.sequence = (w.sequence + 1) & SequenceMask
+		if w.sequence == 0 {
+			now = tilNextMillis(w.lastTime)
+		}
+	} else {
+		w.sequence = 0
+	}
+
+	w.lastTime = now
+
+	return (now << TimestampShift) | (int64(w.machineID) << MachineIDShift) | int64(w.sequence)
 }
 
 func tilNextMillis(lt int64) int64 {
